@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10251f">
+<title>Apple of Fortune — labo de probabilités</title>
+<style>
+:root{color-scheme:dark;--bg:#0d1918;--panel:#172725;--line:#34514a;--green:#75c86a;--gold:#efbd37;--muted:#b4c7bf}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 15%,#245344,#0b1718 65%);color:#f3f7f2;font:16px/1.45 system-ui,Arial,sans-serif}
+main{max-width:760px;margin:auto;padding:20px 14px 40px}.top{padding:20px;border:1px solid var(--line);border-radius:20px;background:#122622eF}
+.tag{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:#a5e5a0;font-weight:800}h1{margin:6px 0;font-size:clamp(1.8rem,7vw,2.6rem)}p{color:var(--muted);margin:8px 0}
+.warning{margin:14px 0;padding:13px;border-radius:13px;border:1px solid #80632c;background:#382f1c;color:#ffe7ae}
+.panel{margin-top:14px;padding:17px;border:1px solid var(--line);border-radius:18px;background:#14231f}
+h2{font-size:1.05rem;margin:0 0 10px}.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:14px}
+.tile{aspect-ratio:1;border-radius:50%;border:2px solid #8b5935;background:linear-gradient(145deg,#c58b4a,#74452c);box-shadow:inset 0 3px 5px #f6d18a66,inset 0 -5px 5px #3a201b88;display:grid;place-items:center;font-size:clamp(1.1rem,5vw,2rem);color:#fff;min-width:0}
+.tile.safe{background:linear-gradient(145deg,#8bd36e,#2d794c);border-color:#b8e88d}.tile.other{background:linear-gradient(145deg,#7f9aa0,#405e68);border-color:#b4d0d1}
+.controls{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}button{border:0;border-radius:11px;padding:11px 15px;font:inherit;font-weight:750;background:var(--gold);color:#302307;cursor:pointer}button.secondary{background:#263e38;color:#f3f7f2;border:1px solid var(--line)}
+label{display:block;color:var(--muted);font-size:.9rem;margin:9px 0 5px}input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0c1916;color:white;font:inherit}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.metric{background:#203832;border-radius:12px;padding:12px}.metric b{display:block;font-size:1.35rem}.metric span{font-size:.8rem;color:var(--muted)}
+.small{font-size:.85rem}.result{min-height:24px;color:#c7edc3;margin-top:10px}footer{font-size:.82rem;color:var(--muted);margin:18px 3px}
+@media(max-width:420px){.grid{gap:5px}.tile{border-width:1px}.metrics{grid-template-columns:1fr 1fr}.metric:last-child{grid-column:span 2}}
+</style>
+</head>
+<body><main>
+<header class="top"><div class="tag">Simulateur éducatif · sans argent réel</div><h1>Apple of Fortune</h1><p>Une grille de démonstration à 5 colonnes pour découvrir le hasard et les fréquences.</p></header>
+<div class="warning"><b>À savoir :</b> cette page est un exercice scolaire indépendant. Elle ne se connecte pas au jeu Apple of Fortune, ne reproduit pas ses mécanismes internes et ne prédit aucun résultat réel.</div>
+<section class="panel">
+<h2>Grille de démonstration</h2>
+<p class="small">Chaque nouvelle simulation colore les cases au hasard. Les pommes vertes et les cases bleues sont générées par ce simulateur uniquement.</p>
+<div class="grid" id="grid" aria-label="Grille de simulation de 7 rangées et 5 colonnes"></div>
+<div class="controls"><button id="draw">Nouvelle simulation</button><button class="secondary" id="reset">Effacer la grille</button></div>
+<div class="result" id="result" aria-live="polite">Lance une simulation pour observer un exemple aléatoire.</div>
+</section>
+<section class="panel">
+<h2>Comprendre les probabilités</h2>
+<p class="small">Modifie le nombre de cases vertes possibles par rangée dans cet exercice. Ce réglage ne décrit pas les probabilités du vrai jeu.</p>
+<label for="greenCount">Cases vertes par rangée (1 à 5)</label><input id="greenCount" type="number" min="1" max="5" value="1">
+<div class="metrics">
+<div class="metric"><b id="runs">0</b><span>Simulations effectuées</span></div>
+<div class="metric"><b id="greenTotal">0</b><span>Cases vertes générées</span></div>
+<div class="metric"><b id="observed">—</b><span>Part verte observée</span></div>
+</div>
+<p class="small" id="explain">La fréquence observée varie d'une simulation à l'autre. Sur un grand nombre d'essais, elle peut se rapprocher de la proportion définie pour cet exercice, sans rendre un essai individuel prévisible.</p>
+</section>
+<footer>Conseil : utilise cette simulation pour apprendre les notions de hasard, de fréquence et de probabilité. Elle ne doit pas servir à prendre des décisions de mise ou à engager de l'argent.</footer>
+</main>
+<script>
+const rows=7,cols=5,total=rows*cols;let runs=0,greenTotal=0;
+const grid=document.getElementById('grid');
+for(let i=0;i<total;i++){const d=document.createElement('div');d.className='tile';d.textContent='?';grid.appendChild(d);}
+function reset(){[...grid.children].forEach(x=>{x.className='tile';x.textContent='?';});document.getElementById('result').textContent='Grille effacée. Lance une nouvelle simulation quand tu veux.';}
+document.getElementById('reset').onclick=reset;
+document.getElementById('draw').onclick=()=>{
+ const raw=Number(document.getElementById('greenCount').value),k=Math.floor(raw);
+ if(!Number.isFinite(k)||k<1||k>5){document.getElementById('result').textContent='Entre un nombre entier entre 1 et 5.';return;}
+ let greens=0;
+ for(let r=0;r<rows;r++){
+  const chosen=new Set();while(chosen.size<k)chosen.add(Math.floor(Math.random()*cols));
+  for(let c=0;c<cols;c++){const el=grid.children[r*cols+c];if(chosen.has(c)){el.className='tile safe';el.textContent='🍏';greens++;}else{el.className='tile other';el.textContent='•';}}
+ }
+ runs++;greenTotal+=greens;
+ document.getElementById('runs').textContent=runs;
+ document.getElementById('greenTotal').textContent=greenTotal;
+ document.getElementById('observed').textContent=(greenTotal/(runs*total)*100).toFixed(1).replace('.',',')+' %';
+ document.getElementById('result').textContent=`Simulation ${runs} : ${greens} cases vertes sur ${total}. Résultat créé au hasard par l'exercice.`;
+};
+</script></body></html>
